@@ -1,12 +1,10 @@
 import { Briefcase } from "lucide-react";
-import { cn } from "@/lib/utils";
 
-export interface LogoProps {
+interface LogoProps {
   size?: "sm" | "md" | "lg";
-  className?: string;
 }
 
-export const Logo = ({ size = "md", className }: LogoProps) => {
+export const Logo = ({ size = "md" }: LogoProps) => {
   const sizeClasses = {
     sm: "h-8 w-8",
     md: "h-10 w-10",
@@ -20,7 +18,7 @@ export const Logo = ({ size = "md", className }: LogoProps) => {
   };
 
   return (
-    <div className={cn("flex items-center gap-3", className)}>
+    <div className="flex items-center gap-3">
       <div className={`${sizeClasses[size]} gradient-primary rounded-xl flex items-center justify-center shadow-soft`}>
         <Briefcase className="text-primary-foreground" size={size === "lg" ? 28 : size === "md" ? 22 : 18} />
       </div>
