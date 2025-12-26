@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Logo } from "@/components/Logo";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -9,13 +9,12 @@ import {
   Users, 
   CheckCircle2, 
   XCircle, 
-  Clock,
   TrendingUp,
   Download,
-  Filter,
   LogOut
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
+import { useAuth } from "@/hooks/useAuth";
 
 // Sample data - In production, this would come from the database
 const sampleCandidates = [
@@ -31,8 +30,32 @@ const sampleCandidates = [
 
 const HRDashboard = () => {
   const navigate = useNavigate();
+  const { user, isHR, loading, signOut } = useAuth();
   const [searchQuery, setSearchQuery] = useState("");
   const [filter, setFilter] = useState<"all" | "recommended" | "not_recommended">("all");
+
+  useEffect(() => {
+    if (!loading && (!user || !isHR)) {
+      navigate("/hr-auth");
+    }
+  }, [user, isHR, loading, navigate]);
+
+  const handleLogout = async () => {
+    await signOut();
+    navigate("/hr-auth");
+  };
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <div className="animate-pulse text-muted-foreground">Loading...</div>
+      </div>
+    );
+  }
+
+  if (!user || !isHR) {
+    return null;
+  }
 
   const filteredCandidates = sampleCandidates.filter(candidate => {
     const matchesSearch = 
@@ -60,8 +83,8 @@ const HRDashboard = () => {
         <div className="container max-w-7xl flex justify-between items-center py-4 px-6">
           <Logo />
           <div className="flex items-center gap-4">
-            <span className="text-sm text-muted-foreground">HR Admin</span>
-            <Button variant="ghost" size="sm" onClick={() => navigate("/")}>
+            <span className="text-sm text-muted-foreground">{user.email}</span>
+            <Button variant="ghost" size="sm" onClick={handleLogout}>
               <LogOut size={16} />
               Logout
             </Button>
