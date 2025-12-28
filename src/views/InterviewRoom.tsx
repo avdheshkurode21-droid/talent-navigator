@@ -5,45 +5,14 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Textarea } from "@/components/ui/textarea";
 import { ProgressBar } from "@/components/ProgressBar";
 import { UserData, InterviewResponse } from "@/types";
-import { Clock, Send, ArrowRight, Brain, Loader2 } from "lucide-react";
+import { Clock, Send, ArrowRight, Brain, Loader2, Sparkles } from "lucide-react";
 import { toast } from "sonner";
+import { supabase } from "@/integrations/supabase/client";
 
 interface InterviewRoomProps {
   userData: UserData;
   onComplete: (result: { score: number; recommendation: 'recommended' | 'not_recommended'; summary: string }, responses: InterviewResponse[]) => void;
 }
-
-// AI-generated questions based on domain
-const domainQuestions: Record<string, string[]> = {
-  "HR Services": [
-    "Describe your approach to handling employee conflicts in the workplace.",
-    "How would you design an effective onboarding program for new hires?",
-    "Explain your experience with performance management systems.",
-    "How do you stay updated with employment laws and regulations?",
-    "Describe a challenging recruitment scenario you handled successfully."
-  ],
-  "Frontend Developer": [
-    "Explain the difference between React hooks and class components.",
-    "How would you optimize a web application for performance?",
-    "Describe your approach to responsive design and accessibility.",
-    "What state management solutions have you worked with?",
-    "How do you handle cross-browser compatibility issues?"
-  ],
-  "Backend Developer": [
-    "Explain RESTful API design principles you follow.",
-    "How would you design a scalable microservices architecture?",
-    "Describe your approach to database optimization.",
-    "What security measures do you implement in backend systems?",
-    "How do you handle error logging and monitoring?"
-  ],
-  "default": [
-    "Tell us about your most significant professional achievement.",
-    "How do you approach problem-solving in your field?",
-    "Describe a situation where you had to learn a new skill quickly.",
-    "How do you prioritize tasks when facing multiple deadlines?",
-    "Where do you see yourself professionally in 5 years?"
-  ]
-};
 
 const InterviewRoom = ({ userData, onComplete }: InterviewRoomProps) => {
   const [currentQuestion, setCurrentQuestion] = useState(0);
@@ -52,10 +21,50 @@ const InterviewRoom = ({ userData, onComplete }: InterviewRoomProps) => {
   const [timeLeft, setTimeLeft] = useState(1800); // 30 minutes
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isThinking, setIsThinking] = useState(false);
+  const [isLoadingQuestions, setIsLoadingQuestions] = useState(true);
+  const [questions, setQuestions] = useState<string[]>([]);
 
-  const questions = domainQuestions[userData.domain || "default"] || domainQuestions["default"];
-
+  // Load AI-generated questions
   useEffect(() => {
+    const loadQuestions = async () => {
+      try {
+        const { data, error } = await supabase.functions.invoke('generate-questions', {
+          body: { 
+            domain: userData.domain, 
+            candidateName: userData.fullName 
+          }
+        });
+
+        if (error) throw error;
+        
+        if (data.questions && Array.isArray(data.questions)) {
+          setQuestions(data.questions);
+        } else {
+          throw new Error("Invalid questions response");
+        }
+      } catch (error) {
+        console.error("Failed to generate questions:", error);
+        toast.error("Using default questions due to AI service issue");
+        // Fallback questions
+        setQuestions([
+          `Tell us about your experience in ${userData.domain}.`,
+          `What are the key skills needed for success in ${userData.domain}?`,
+          `Describe a challenging project you've worked on.`,
+          `How do you stay updated with industry trends?`,
+          `Where do you see yourself in 5 years?`
+        ]);
+      } finally {
+        setIsLoadingQuestions(false);
+      }
+    };
+
+    loadQuestions();
+  }, [userData]);
+
+  // Timer
+  useEffect(() => {
+    if (isLoadingQuestions) return;
+    
     const timer = setInterval(() => {
       setTimeLeft(prev => {
         if (prev <= 1) {
@@ -68,7 +77,7 @@ const InterviewRoom = ({ userData, onComplete }: InterviewRoomProps) => {
     }, 1000);
 
     return () => clearInterval(timer);
-  }, []);
+  }, [isLoadingQuestions]);
 
   const formatTime = (seconds: number) => {
     const mins = Math.floor(seconds / 60);
@@ -84,24 +93,55 @@ const InterviewRoom = ({ userData, onComplete }: InterviewRoomProps) => {
 
     setIsThinking(true);
     
-    // Simulate AI processing
-    await new Promise(resolve => setTimeout(resolve, 1000));
+    try {
+      // Evaluate the answer with AI
+      const { data, error } = await supabase.functions.invoke('evaluate-answer', {
+        body: { 
+          question: questions[currentQuestion],
+          answer: answer.trim(),
+          domain: userData.domain
+        }
+      });
 
-    const newResponse: InterviewResponse = {
-      question: questions[currentQuestion],
-      answer: answer.trim(),
-      score: Math.floor(Math.random() * 40) + 60 // Simulated score 60-100
-    };
+      if (error) throw error;
 
-    const updatedResponses = [...responses, newResponse];
-    setResponses(updatedResponses);
-    setAnswer("");
-    setIsThinking(false);
+      const newResponse: InterviewResponse = {
+        question: questions[currentQuestion],
+        answer: answer.trim(),
+        score: data.score || 70
+      };
 
-    if (currentQuestion < questions.length - 1) {
-      setCurrentQuestion(prev => prev + 1);
-    } else {
-      handleFinalSubmit(updatedResponses);
+      const updatedResponses = [...responses, newResponse];
+      setResponses(updatedResponses);
+      setAnswer("");
+      setIsThinking(false);
+
+      if (currentQuestion < questions.length - 1) {
+        setCurrentQuestion(prev => prev + 1);
+      } else {
+        handleFinalSubmit(updatedResponses);
+      }
+    } catch (error) {
+      console.error("Failed to evaluate answer:", error);
+      toast.error("Evaluation service unavailable, continuing with default score");
+      
+      // Fallback if AI fails
+      const newResponse: InterviewResponse = {
+        question: questions[currentQuestion],
+        answer: answer.trim(),
+        score: 70
+      };
+
+      const updatedResponses = [...responses, newResponse];
+      setResponses(updatedResponses);
+      setAnswer("");
+      setIsThinking(false);
+
+      if (currentQuestion < questions.length - 1) {
+        setCurrentQuestion(prev => prev + 1);
+      } else {
+        handleFinalSubmit(updatedResponses);
+      }
     }
   };
 
@@ -113,17 +153,57 @@ const InterviewRoom = ({ userData, onComplete }: InterviewRoomProps) => {
       ? Math.round(allResponses.reduce((acc, r) => acc + r.score, 0) / allResponses.length)
       : 0;
 
-    // Simulate AI evaluation
-    await new Promise(resolve => setTimeout(resolve, 2000));
+    try {
+      // Generate AI summary
+      const { data, error } = await supabase.functions.invoke('generate-summary', {
+        body: { 
+          candidateName: userData.fullName,
+          domain: userData.domain,
+          responses: allResponses,
+          averageScore: avgScore
+        }
+      });
 
-    const result = {
-      score: avgScore,
-      recommendation: avgScore >= 65 ? 'recommended' as const : 'not_recommended' as const,
-      summary: `Candidate demonstrated ${avgScore >= 75 ? 'strong' : avgScore >= 65 ? 'adequate' : 'insufficient'} proficiency in ${userData.domain}. ${avgScore >= 65 ? 'Recommended for further consideration.' : 'Additional training may be required.'}`
-    };
+      if (error) throw error;
 
-    onComplete(result, allResponses);
+      const result = {
+        score: avgScore,
+        recommendation: data.recommendation as 'recommended' | 'not_recommended',
+        summary: data.summary
+      };
+
+      onComplete(result, allResponses);
+    } catch (error) {
+      console.error("Failed to generate summary:", error);
+      
+      // Fallback result
+      const result = {
+        score: avgScore,
+        recommendation: avgScore >= 65 ? 'recommended' as const : 'not_recommended' as const,
+        summary: `${userData.fullName} achieved an average score of ${avgScore}% in the ${userData.domain} assessment. ${avgScore >= 65 ? "Recommended for further consideration." : "Additional review may be required."}`
+      };
+
+      onComplete(result, allResponses);
+    }
   };
+
+  if (isLoadingQuestions) {
+    return (
+      <div className="min-h-screen flex flex-col items-center justify-center">
+        <div className="text-center animate-fade-in">
+          <div className="w-20 h-20 mx-auto mb-6 rounded-2xl bg-primary/10 flex items-center justify-center">
+            <Sparkles className="text-primary animate-pulse" size={40} />
+          </div>
+          <h2 className="text-2xl font-display font-bold text-foreground mb-2">
+            Preparing Your Assessment
+          </h2>
+          <p className="text-muted-foreground">
+            AI is generating personalized questions for {userData.domain}...
+          </p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen flex flex-col">
@@ -161,10 +241,13 @@ const InterviewRoom = ({ userData, onComplete }: InterviewRoomProps) => {
             ) : (
               <>
                 <div className="mb-8">
-                  <span className="text-xs text-primary font-medium uppercase tracking-wider">
-                    Question {currentQuestion + 1} of {questions.length}
-                  </span>
-                  <h2 className="text-2xl font-display font-bold text-foreground mt-3">
+                  <div className="flex items-center gap-2 mb-3">
+                    <Sparkles className="text-primary" size={16} />
+                    <span className="text-xs text-primary font-medium uppercase tracking-wider">
+                      AI-Generated Question {currentQuestion + 1} of {questions.length}
+                    </span>
+                  </div>
+                  <h2 className="text-2xl font-display font-bold text-foreground">
                     {questions[currentQuestion]}
                   </h2>
                 </div>
