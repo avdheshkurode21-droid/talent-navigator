@@ -1,17 +1,16 @@
 import { useState } from "react";
-import { Logo } from "@/components/Logo";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { Phone, CreditCard, ArrowRight, Shield, User } from "lucide-react";
+import { Zap, Globe, CheckCircle, ArrowRight, LayoutGrid } from "lucide-react";
 import { toast } from "sonner";
 import { UserData } from "@/types";
 
 interface LoginViewProps {
   onLogin: (data: UserData) => void;
+  onHRClick?: () => void;
 }
 
-const LoginView = ({ onLogin }: LoginViewProps) => {
+const LoginView = ({ onLogin, onHRClick }: LoginViewProps) => {
   const [fullName, setFullName] = useState("");
   const [phone, setPhone] = useState("");
   const [registrationNo, setRegistrationNo] = useState("");
@@ -31,8 +30,6 @@ const LoginView = ({ onLogin }: LoginViewProps) => {
     }
 
     setIsLoading(true);
-    
-    // Simulate API call
     await new Promise(resolve => setTimeout(resolve, 1000));
     
     onLogin({ fullName, phone, registrationNo });
@@ -40,96 +37,150 @@ const LoginView = ({ onLogin }: LoginViewProps) => {
     setIsLoading(false);
   };
 
+  const features = [
+    { icon: Zap, text: "Instant AI Evaluation" },
+    { icon: Globe, text: "Global Recruitment Standards" },
+    { icon: CheckCircle, text: "Verified Domain Expertise" },
+  ];
+
   return (
-    <div className="min-h-screen flex flex-col items-center justify-center p-6">
-      {/* Ambient glow effects */}
-      <div className="fixed inset-0 overflow-hidden pointer-events-none">
-        <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-primary/10 rounded-full blur-3xl" />
-        <div className="absolute bottom-1/4 right-1/4 w-96 h-96 bg-indigo-500/10 rounded-full blur-3xl" />
+    <div className="min-h-screen flex bg-[#0a0a0f]">
+      {/* HR Panel Button */}
+      {onHRClick && (
+        <button
+          onClick={onHRClick}
+          className="absolute top-6 right-6 flex items-center gap-2 px-4 py-2 rounded-lg border border-border/30 bg-background/50 text-foreground hover:bg-background/80 transition-colors z-10"
+        >
+          <LayoutGrid size={18} />
+          <span className="text-sm font-medium">HR Panel</span>
+        </button>
+      )}
+
+      {/* Left Side - Marketing Content */}
+      <div className="hidden lg:flex lg:w-1/2 flex-col justify-center px-16 xl:px-24">
+        <h1 className="text-5xl xl:text-6xl font-bold leading-tight text-foreground mb-6">
+          Professional<br />
+          Hiring,<br />
+          <span className="bg-gradient-to-r from-indigo-500 via-purple-500 to-indigo-400 bg-clip-text text-transparent">
+            Redefined.
+          </span>
+        </h1>
+        
+        <p className="text-muted-foreground text-lg mb-12 max-w-md">
+          Our AI-powered platform helps the world's leading companies identify top talent through dynamic, domain-specific intelligence.
+        </p>
+
+        <div className="space-y-4">
+          {features.map((feature, index) => (
+            <div key={index} className="flex items-center gap-4">
+              <div className="w-12 h-12 rounded-xl bg-indigo-500/10 border border-indigo-500/20 flex items-center justify-center">
+                <feature.icon className="text-indigo-400" size={22} />
+              </div>
+              <span className="text-foreground font-medium">{feature.text}</span>
+            </div>
+          ))}
+        </div>
       </div>
 
-      <div className="w-full max-w-md relative z-10 animate-slide-up">
-        <div className="text-center mb-8">
-          <Logo />
-          <h1 className="text-3xl font-display font-bold text-foreground mt-6 mb-2">
-            Welcome Back
-          </h1>
-          <p className="text-muted-foreground">
-            Enter your credentials to start the assessment
-          </p>
-        </div>
+      {/* Right Side - Login Form */}
+      <div className="w-full lg:w-1/2 flex flex-col items-center justify-center px-6 lg:px-16">
+        <div className="w-full max-w-md">
+          <div className="mb-8">
+            <h2 className="text-3xl font-bold text-foreground mb-2">
+              Candidate Portal
+            </h2>
+            <p className="text-muted-foreground">
+              Please enter your registration details to proceed to the evaluation.
+            </p>
+          </div>
 
-        <Card className="border-border/50 bg-card/80 backdrop-blur-xl shadow-elevated">
-          <CardContent className="pt-8 pb-6">
-            <form onSubmit={handleSubmit} className="space-y-5">
-              <div className="space-y-2">
-                <label className="text-sm font-medium text-foreground">Full Name</label>
-                <div className="relative">
-                  <User className="absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground" size={18} />
-                  <Input
-                    type="text"
-                    placeholder="Enter your full name"
-                    value={fullName}
-                    onChange={(e) => setFullName(e.target.value)}
-                    className="pl-12 bg-background/50 border-border/50"
-                  />
-                </div>
-              </div>
-
-              <div className="space-y-2">
-                <label className="text-sm font-medium text-foreground">Phone Number</label>
-                <div className="relative">
-                  <Phone className="absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground" size={18} />
-                  <Input
-                    type="tel"
-                    placeholder="Enter your phone number"
-                    value={phone}
-                    onChange={(e) => setPhone(e.target.value)}
-                    className="pl-12 bg-background/50 border-border/50"
-                  />
-                </div>
-              </div>
-              
-              <div className="space-y-2">
-                <label className="text-sm font-medium text-foreground">Registration / ID Number</label>
-                <div className="relative">
-                  <CreditCard className="absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground" size={18} />
-                  <Input
-                    type="text"
-                    placeholder="Enter your ID number"
-                    value={registrationNo}
-                    onChange={(e) => setRegistrationNo(e.target.value)}
-                    className="pl-12 bg-background/50 border-border/50"
-                  />
-                </div>
-              </div>
-
-              <Button 
-                type="submit" 
-                variant="gradient" 
-                size="lg" 
-                className="w-full mt-6"
-                disabled={isLoading}
-              >
-                {isLoading ? (
-                  <span className="flex items-center gap-2">
-                    <div className="w-4 h-4 border-2 border-primary-foreground/30 border-t-primary-foreground rounded-full animate-spin" />
-                    Verifying...
-                  </span>
-                ) : (
-                  <span className="flex items-center gap-2">
-                    Start Assessment
-                    <ArrowRight size={18} />
-                  </span>
+          <form onSubmit={handleSubmit} className="space-y-5">
+            <div className="space-y-2">
+              <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                Full Name
+              </label>
+              <div className="relative">
+                <Input
+                  type="text"
+                  placeholder="Enter your full name"
+                  value={fullName}
+                  onChange={(e) => setFullName(e.target.value)}
+                  className="h-14 bg-[#1a1a24] border-[#2a2a3a] text-foreground placeholder:text-muted-foreground/50 pr-12 rounded-xl focus:border-emerald-500 focus:ring-emerald-500/20"
+                />
+                {fullName && (
+                  <CheckCircle className="absolute right-4 top-1/2 -translate-y-1/2 text-emerald-500" size={20} />
                 )}
-              </Button>
-            </form>
-          </CardContent>
-        </Card>
+              </div>
+            </div>
 
-        <p className="text-center text-sm text-muted-foreground mt-6">
-          By continuing, you agree to our Terms of Service and Privacy Policy
-        </p>
+            <div className="space-y-2">
+              <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                Phone Number
+              </label>
+              <div className="relative">
+                <Input
+                  type="tel"
+                  placeholder="Enter your phone number"
+                  value={phone}
+                  onChange={(e) => setPhone(e.target.value)}
+                  className="h-14 bg-[#1a1a24] border-[#2a2a3a] text-foreground placeholder:text-muted-foreground/50 pr-12 rounded-xl focus:border-emerald-500 focus:ring-emerald-500/20"
+                />
+                {phone.length >= 10 && (
+                  <CheckCircle className="absolute right-4 top-1/2 -translate-y-1/2 text-emerald-500" size={20} />
+                )}
+              </div>
+            </div>
+            
+            <div className="space-y-2">
+              <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                Registration / ID Number
+              </label>
+              <div className="relative">
+                <Input
+                  type="text"
+                  placeholder="Enter your ID number"
+                  value={registrationNo}
+                  onChange={(e) => setRegistrationNo(e.target.value)}
+                  className="h-14 bg-[#1a1a24] border-[#2a2a3a] text-foreground placeholder:text-muted-foreground/50 pr-12 rounded-xl focus:border-emerald-500 focus:ring-emerald-500/20"
+                />
+                {registrationNo && (
+                  <CheckCircle className="absolute right-4 top-1/2 -translate-y-1/2 text-emerald-500" size={20} />
+                )}
+              </div>
+            </div>
+
+            <Button 
+              type="submit" 
+              size="lg" 
+              className="w-full h-14 mt-6 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 text-white font-medium rounded-xl"
+              disabled={isLoading}
+            >
+              {isLoading ? (
+                <span className="flex items-center gap-2">
+                  <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                  Verifying...
+                </span>
+              ) : (
+                <span className="flex items-center gap-2">
+                  Proceed to Domain Selection
+                  <ArrowRight size={18} />
+                </span>
+              )}
+            </Button>
+          </form>
+
+          <p className="text-center text-sm text-muted-foreground mt-6">
+            By proceeding, you agree to our Terms of Service and Data Handling policies for the evaluation.
+          </p>
+
+          <div className="flex items-center justify-center gap-2 mt-8 text-muted-foreground/50 text-sm">
+            <span>POWERED BY</span>
+            <span className="flex items-center gap-1.5">
+              <span className="w-2 h-2 rounded-full bg-indigo-500"></span>
+              <span className="font-semibold text-muted-foreground">ORBION</span>
+            </span>
+          </div>
+        </div>
       </div>
     </div>
   );
