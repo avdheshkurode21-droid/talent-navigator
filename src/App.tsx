@@ -81,31 +81,38 @@ const App = () => {
         <Toaster />
         <Sonner position="top-center" />
         <div className="min-h-screen bg-background text-foreground selection:bg-primary/30">
-          {/* Navigation Helper */}
-          <nav className="fixed top-0 right-0 p-4 z-50 flex gap-4">
-            {currentView !== AppView.DASHBOARD && (
-              <button 
-                onClick={() => setCurrentView(AppView.DASHBOARD)}
-                className="flex items-center gap-2 px-4 py-2 bg-card/80 backdrop-blur-sm border border-border/50 rounded-full text-xs font-medium hover:bg-card transition-colors"
-              >
-                <LayoutDashboard size={14} />
-                HR Panel
-              </button>
-            )}
-            {currentView === AppView.DASHBOARD && (
-              <button 
-                onClick={() => setCurrentView(AppView.LOGIN)}
-                className="flex items-center gap-2 px-4 py-2 bg-card/80 backdrop-blur-sm border border-border/50 rounded-full text-xs font-medium hover:bg-card transition-colors"
-              >
-                <LogOut size={14} />
-                Candidate Portal
-              </button>
-            )}
-          </nav>
+          {/* Navigation Helper - Only show for non-login views */}
+          {currentView !== AppView.LOGIN && (
+            <nav className="fixed top-0 right-0 p-4 z-50 flex gap-4">
+              {currentView !== AppView.DASHBOARD && (
+                <button 
+                  onClick={() => setCurrentView(AppView.DASHBOARD)}
+                  className="flex items-center gap-2 px-4 py-2 bg-card/80 backdrop-blur-sm border border-border/50 rounded-full text-xs font-medium hover:bg-card transition-colors"
+                >
+                  <LayoutDashboard size={14} />
+                  HR Panel
+                </button>
+              )}
+              {currentView === AppView.DASHBOARD && (
+                <button 
+                  onClick={() => setCurrentView(AppView.LOGIN)}
+                  className="flex items-center gap-2 px-4 py-2 bg-card/80 backdrop-blur-sm border border-border/50 rounded-full text-xs font-medium hover:bg-card transition-colors"
+                >
+                  <LogOut size={14} />
+                  Candidate Portal
+                </button>
+              )}
+            </nav>
+          )}
 
           {/* Main View Router */}
           <main className="min-h-screen">
-            {currentView === AppView.LOGIN && <LoginView onLogin={handleLogin} />}
+            {currentView === AppView.LOGIN && (
+              <LoginView 
+                onLogin={handleLogin} 
+                onHRClick={() => setCurrentView(AppView.DASHBOARD)} 
+              />
+            )}
             {currentView === AppView.DOMAIN_SELECTION && (
               <DomainSelectionView onSelect={handleDomainSelect} userName={userData?.fullName || ''} />
             )}
