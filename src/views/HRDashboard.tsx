@@ -1,9 +1,9 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Logo } from "@/components/Logo";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import { CandidateResult } from "@/types";
+import { supabase } from "@/integrations/supabase/client";
 import { 
   Search, 
   Users, 
@@ -12,23 +12,58 @@ import {
   TrendingUp,
   Download,
   ChevronDown,
-  ChevronUp
+  ChevronUp,
+  Loader2
 } from "lucide-react";
 
-interface HRDashboardProps {
-  results: CandidateResult[];
+interface InterviewResult {
+  id: string;
+  candidate_name: string;
+  candidate_email: string;
+  domain: string;
+  responses: Array<{ question: string; answer: string; score: number }>;
+  score: number;
+  recommendation: string;
+  summary: string | null;
+  created_at: string;
 }
 
-const HRDashboard = ({ results }: HRDashboardProps) => {
+const HRDashboard = () => {
+  const [results, setResults] = useState<InterviewResult[]>([]);
+  const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
   const [filter, setFilter] = useState<"all" | "recommended" | "not_recommended">("all");
   const [expandedCandidate, setExpandedCandidate] = useState<string | null>(null);
 
+  useEffect(() => {
+    fetchResults();
+  }, []);
+
+  const fetchResults = async () => {
+    setLoading(true);
+    const { data, error } = await supabase
+      .from("interview_results")
+      .select("*")
+      .order("created_at", { ascending: false });
+
+    if (error) {
+      console.error("Failed to fetch results:", error);
+    } else {
+      setResults((data || []).map(item => ({
+        ...item,
+        responses: Array.isArray(item.responses) 
+          ? item.responses as Array<{ question: string; answer: string; score: number }>
+          : []
+      })));
+    }
+    setLoading(false);
+  };
+
   const filteredResults = results.filter(result => {
     const matchesSearch = 
-      result.userData.fullName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      result.userData.registrationNo.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      result.userData.phone.includes(searchQuery);
+      result.candidate_name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      result.candidate_email.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      result.domain.toLowerCase().includes(searchQuery.toLowerCase());
     
     const matchesFilter = 
       filter === "all" || result.recommendation === filter;
@@ -54,6 +89,14 @@ const HRDashboard = ({ results }: HRDashboardProps) => {
       minute: '2-digit'
     });
   };
+
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <Loader2 className="w-8 h-8 animate-spin text-primary" />
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen">
@@ -137,7 +180,7 @@ const HRDashboard = ({ results }: HRDashboardProps) => {
                 <div className="relative flex-1 md:w-64">
                   <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" size={18} />
                   <Input
-                    placeholder="Search by name, ID, or phone..."
+                    placeholder="Search by name, email, or domain..."
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
                     className="pl-10 bg-background/50 border-border/50"
@@ -176,25 +219,25 @@ const HRDashboard = ({ results }: HRDashboardProps) => {
           <CardContent>
             <div className="space-y-3">
               {filteredResults.length > 0 ? (
-                filteredResults.map((result, index) => (
+                filteredResults.map((result) => (
                   <div
-                    key={index}
+                    key={result.id}
                     className="border border-border/50 rounded-xl overflow-hidden bg-background/30"
                   >
                     <div 
                       className="p-4 cursor-pointer hover:bg-secondary/20 transition-colors"
-                      onClick={() => setExpandedCandidate(expandedCandidate === result.timestamp ? null : result.timestamp)}
+                      onClick={() => setExpandedCandidate(expandedCandidate === result.id ? null : result.id)}
                     >
                       <div className="flex items-center justify-between">
                         <div className="flex items-center gap-4">
                           <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center">
                             <span className="text-sm font-bold text-primary">
-                              {result.userData.fullName.charAt(0)}
+                              {result.candidate_name.charAt(0)}
                             </span>
                           </div>
                           <div>
-                            <h3 className="font-medium text-foreground">{result.userData.fullName}</h3>
-                            <p className="text-sm text-muted-foreground">{result.userData.domain} • {result.userData.registrationNo}</p>
+                            <h3 className="font-medium text-foreground">{result.candidate_name}</h3>
+                            <p className="text-sm text-muted-foreground">{result.domain} • {result.candidate_email}</p>
                           </div>
                         </div>
                         <div className="flex items-center gap-4">
@@ -208,7 +251,7 @@ const HRDashboard = ({ results }: HRDashboardProps) => {
                               {result.recommendation === 'recommended' ? 'Recommended' : 'Not Recommended'}
                             </span>
                           </div>
-                          {expandedCandidate === result.timestamp ? (
+                          {expandedCandidate === result.id ? (
                             <ChevronUp className="text-muted-foreground" size={20} />
                           ) : (
                             <ChevronDown className="text-muted-foreground" size={20} />
@@ -217,22 +260,24 @@ const HRDashboard = ({ results }: HRDashboardProps) => {
                       </div>
                     </div>
 
-                    {expandedCandidate === result.timestamp && (
+                    {expandedCandidate === result.id && (
                       <div className="border-t border-border/50 p-4 bg-secondary/10">
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
                           <div>
-                            <p className="text-xs text-muted-foreground">Phone</p>
-                            <p className="text-sm text-foreground">{result.userData.phone}</p>
+                            <p className="text-xs text-muted-foreground">Email/ID</p>
+                            <p className="text-sm text-foreground">{result.candidate_email}</p>
                           </div>
                           <div>
                             <p className="text-xs text-muted-foreground">Assessment Date</p>
-                            <p className="text-sm text-foreground">{formatDate(result.timestamp)}</p>
+                            <p className="text-sm text-foreground">{formatDate(result.created_at)}</p>
                           </div>
                         </div>
-                        <div className="mb-4">
-                          <p className="text-xs text-muted-foreground mb-2">AI Summary</p>
-                          <p className="text-sm text-foreground bg-background/50 p-3 rounded-lg">{result.summary}</p>
-                        </div>
+                        {result.summary && (
+                          <div className="mb-4">
+                            <p className="text-xs text-muted-foreground mb-2">AI Summary</p>
+                            <p className="text-sm text-foreground bg-background/50 p-3 rounded-lg">{result.summary}</p>
+                          </div>
+                        )}
                         <div>
                           <p className="text-xs text-muted-foreground mb-2">Responses ({result.responses.length})</p>
                           <div className="space-y-2">

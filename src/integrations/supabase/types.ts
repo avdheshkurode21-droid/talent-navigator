@@ -14,6 +14,42 @@ export type Database = {
   }
   public: {
     Tables: {
+      interview_results: {
+        Row: {
+          candidate_email: string
+          candidate_name: string
+          created_at: string
+          domain: string
+          id: string
+          recommendation: string
+          responses: Json
+          score: number
+          summary: string | null
+        }
+        Insert: {
+          candidate_email: string
+          candidate_name: string
+          created_at?: string
+          domain: string
+          id?: string
+          recommendation?: string
+          responses?: Json
+          score?: number
+          summary?: string | null
+        }
+        Update: {
+          candidate_email?: string
+          candidate_name?: string
+          created_at?: string
+          domain?: string
+          id?: string
+          recommendation?: string
+          responses?: Json
+          score?: number
+          summary?: string | null
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           created_at: string

@@ -3,33 +3,43 @@ import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { AppView, UserData, CandidateResult, InterviewResponse } from "./types";
+import { AppView, UserData, InterviewResponse } from "./types";
 import LoginView from "./views/LoginView";
 import DomainSelectionView from "./views/DomainSelectionView";
 import InterviewRoom from "./views/InterviewRoom";
 import SuccessView from "./views/SuccessView";
 import HRDashboard from "./views/HRDashboard";
 import { LayoutDashboard, LogOut } from "lucide-react";
+import { supabase } from "@/integrations/supabase/client";
+import { toast } from "sonner";
 
 const queryClient = new QueryClient();
 
 const App = () => {
   const [currentView, setCurrentView] = useState<AppView>(AppView.LOGIN);
   const [userData, setUserData] = useState<UserData | null>(null);
-  const [results, setResults] = useState<CandidateResult[]>([]);
 
-  // Load results from localStorage
-  useEffect(() => {
-    const saved = localStorage.getItem('elitehire_results');
-    if (saved) {
-      setResults(JSON.parse(saved));
+  const saveResultToDatabase = async (
+    userData: UserData,
+    responses: InterviewResponse[],
+    score: number,
+    recommendation: string,
+    summary: string
+  ) => {
+    const { error } = await supabase.from("interview_results").insert([{
+      candidate_name: userData.fullName,
+      candidate_email: userData.registrationNo,
+      domain: userData.domain || "",
+      responses: JSON.parse(JSON.stringify(responses)),
+      score: score,
+      recommendation: recommendation,
+      summary: summary,
+    }]);
+
+    if (error) {
+      console.error("Failed to save result:", error);
+      toast.error("Failed to save interview result");
     }
-  }, []);
-
-  const saveResult = (result: CandidateResult) => {
-    const updated = [...results, result];
-    setResults(updated);
-    localStorage.setItem('elitehire_results', JSON.stringify(updated));
   };
 
   const handleLogin = (data: UserData) => {
@@ -44,20 +54,18 @@ const App = () => {
     }
   };
 
-  const handleInterviewComplete = (
+  const handleInterviewComplete = async (
     finalResult: { score: number; recommendation: 'recommended' | 'not_recommended'; summary: string },
     responses: InterviewResponse[]
   ) => {
     if (userData) {
-      const fullResult: CandidateResult = {
+      await saveResultToDatabase(
         userData,
         responses,
-        score: finalResult.score,
-        recommendation: finalResult.recommendation,
-        summary: finalResult.summary,
-        timestamp: new Date().toISOString(),
-      };
-      saveResult(fullResult);
+        finalResult.score,
+        finalResult.recommendation,
+        finalResult.summary
+      );
       setCurrentView(AppView.SUCCESS);
     }
   };
@@ -105,7 +113,7 @@ const App = () => {
               <InterviewRoom userData={userData} onComplete={handleInterviewComplete} />
             )}
             {currentView === AppView.SUCCESS && <SuccessView onFinish={resetFlow} />}
-            {currentView === AppView.DASHBOARD && <HRDashboard results={results} />}
+            {currentView === AppView.DASHBOARD && <HRDashboard />}
           </main>
         </div>
       </TooltipProvider>
